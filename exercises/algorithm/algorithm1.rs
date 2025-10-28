@@ -1,11 +1,5 @@
-/*
-    single linked list merge
-    This problem requires you to merge two ordered singly linked lists into one ordered singly linked list
-*/
-
 use std::fmt::{self, Display, Formatter};
 use std::ptr::NonNull;
-use std::vec::*;
 
 #[derive(Debug)]
 struct Node<T> {
@@ -18,6 +12,7 @@ impl<T> Node<T> {
         Node { val: t, next: None }
     }
 }
+
 #[derive(Debug)]
 struct LinkedList<T> {
     length: u32,
@@ -65,50 +60,84 @@ impl<T> LinkedList<T> {
             },
         }
     }
+
     pub fn merge(list_a: LinkedList<T>, list_b: LinkedList<T>) -> Self
     where
-        T: PartialOrd,
+        T: Ord,
     {
-        let mut merged_list = LinkedList::new();
+        let mut a_current = list_a.start;
+        let mut b_current = list_b.start;
 
-        // 获取两个链表的起始指针
-        let mut ptr_a = list_a.start;
-        let mut ptr_b = list_b.start;
-
-        // 使用双指针方法合并两个有序链表
-        while ptr_a.is_some() && ptr_b.is_some() {
-            unsafe {
-                let node_a = ptr_a.unwrap().as_ptr();
-                let node_b = ptr_b.unwrap().as_ptr();
-
-                if (*node_a).val <= (*node_b).val {
-                    merged_list.add((*node_a).val);
-                    ptr_a = (*node_a).next;
+        // Determine the start node of the merged list and update current pointers
+        let (start, new_a, new_b) = match (a_current, b_current) {
+            (None, None) => (None, None, None),
+            (Some(a), None) => (Some(a), None, None),
+            (None, Some(b)) => (Some(b), None, None),
+            (Some(a), Some(b)) => {
+                let a_val = unsafe { &(*a.as_ptr()).val };
+                let b_val = unsafe { &(*b.as_ptr()).val };
+                if a_val <= b_val {
+                    let next_a = unsafe { (*a.as_ptr()).next };
+                    (Some(a), next_a, Some(b))
                 } else {
-                    merged_list.add((*node_b).val);
-                    ptr_b = (*node_b).next;
+                    let next_b = unsafe { (*b.as_ptr()).next };
+                    (Some(b), Some(a), next_b)
                 }
             }
-        }
+        };
 
-        // 将剩余的元素添加到合并后的链表
-        while ptr_a.is_some() {
-            unsafe {
-                let node = ptr_a.unwrap().as_ptr();
-                merged_list.add((*node).val);
-                ptr_a = (*node).next;
+        a_current = new_a;
+        b_current = new_b;
+
+        let mut result = LinkedList {
+            length: list_a.length + list_b.length,
+            start,
+            end: None,
+        };
+
+        let mut result_current = result.start;
+
+        // Merge the remaining nodes
+        while let (Some(a), Some(b)) = (a_current, b_current) {
+            let a_val = unsafe { &(*a.as_ptr()).val };
+            let b_val = unsafe { &(*b.as_ptr()).val };
+
+            if a_val <= b_val {
+                // Link 'a' to the current end of result
+                unsafe {
+                    (*result_current.unwrap().as_ptr()).next = Some(a);
+                }
+                result_current = Some(a);
+                a_current = unsafe { (*a.as_ptr()).next };
+            } else {
+                // Link 'b' to the current end of result
+                unsafe {
+                    (*result_current.unwrap().as_ptr()).next = Some(b);
+                }
+                result_current = Some(b);
+                b_current = unsafe { (*b.as_ptr()).next };
             }
         }
 
-        while ptr_b.is_some() {
-            unsafe {
-                let node = ptr_b.unwrap().as_ptr();
-                merged_list.add((*node).val);
-                ptr_b = (*node).next;
+        // Handle remaining nodes in either list
+        if let Some(remaining) = a_current.or(b_current) {
+            if let Some(current) = result_current {
+                unsafe {
+                    (*current.as_ptr()).next = Some(remaining);
+                }
             }
+            // Set the end of the result to the end of the non-exhausted list
+            result.end = if a_current.is_some() {
+                list_a.end
+            } else {
+                list_b.end
+            };
+        } else {
+            // Both lists are exhausted; end is the last node in result
+            result.end = result_current;
         }
 
-        merged_list
+        result
     }
 }
 
@@ -181,6 +210,7 @@ mod tests {
             assert_eq!(target_vec[i], *list_c.get(i as i32).unwrap());
         }
     }
+
     #[test]
     fn test_merge_linked_list_2() {
         let mut list_a = LinkedList::<i32>::new();
