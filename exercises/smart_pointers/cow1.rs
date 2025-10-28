@@ -12,15 +12,13 @@
 //
 // Execute `rustlings hint cow1` or use the `hint` watch subcommand for a hint.
 
-// I AM NOT DONE
-
 use std::borrow::Cow;
 
 fn abs_all<'a, 'b>(input: &'a mut Cow<'b, [i32]>) -> &'a mut Cow<'b, [i32]> {
     for i in 0..input.len() {
         let v = input[i];
         if v < 0 {
-            // Clones into a vector if not already owned.
+            // 若为 Borrowed 状态，会克隆为 Owned；若已为 Owned，直接修改
             input.to_mut()[i] = -v;
         }
     }
@@ -33,7 +31,7 @@ mod tests {
 
     #[test]
     fn reference_mutation() -> Result<(), &'static str> {
-        // Clone occurs because `input` needs to be mutated.
+        // 输入为引用，且数据被修改（存在负数），Cow 会从 Borrowed 转为 Owned
         let slice = [-1, 0, 1];
         let mut input = Cow::from(&slice[..]);
         match abs_all(&mut input) {
@@ -44,35 +42,34 @@ mod tests {
 
     #[test]
     fn reference_no_mutation() -> Result<(), &'static str> {
-        // No clone occurs because `input` doesn't need to be mutated.
+        // 输入为引用，且数据未被修改（无负数），Cow 保持 Borrowed 状态
         let slice = [0, 1, 2];
         let mut input = Cow::from(&slice[..]);
         match abs_all(&mut input) {
-            // TODO
+            Cow::Borrowed(_) => Ok(()), // TODO：补全此处，匹配未修改的引用状态
+            _ => Err("Expected borrowed value"),
         }
     }
 
     #[test]
     fn owned_no_mutation() -> Result<(), &'static str> {
-        // We can also pass `slice` without `&` so Cow owns it directly. In this
-        // case no mutation occurs and thus also no clone, but the result is
-        // still owned because it was never borrowed or mutated.
+        // 输入为自有类型（Vec），且数据未被修改，Cow 保持 Owned 状态
         let slice = vec![0, 1, 2];
         let mut input = Cow::from(slice);
         match abs_all(&mut input) {
-            // TODO
+            Cow::Owned(_) => Ok(()), // TODO：补全此处，匹配未修改的自有状态
+            _ => Err("Expected owned value"),
         }
     }
 
     #[test]
     fn owned_mutation() -> Result<(), &'static str> {
-        // Of course this is also the case if a mutation does occur. In this
-        // case the call to `to_mut()` returns a reference to the same data as
-        // before.
+        // 输入为自有类型（Vec），且数据被修改，Cow 仍为 Owned 状态（无需克隆）
         let slice = vec![-1, 0, 1];
         let mut input = Cow::from(slice);
         match abs_all(&mut input) {
-            // TODO
+            Cow::Owned(_) => Ok(()), // TODO：补全此处，匹配修改后的自有状态
+            _ => Err("Expected owned value"),
         }
     }
 }
